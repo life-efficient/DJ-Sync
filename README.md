@@ -9,6 +9,20 @@ This project is a local CLI that:
 - uploads the same flat files into Dropbox
 - remembers what it has already processed so reruns are incremental
 
+## Install
+
+From a GitHub release artifact:
+
+```bash
+pip install https://github.com/life-efficient/DJ-Sync/releases/download/v0.2.0/ytm_dropbox_dj_sync-0.2.0-py3-none-any.whl
+```
+
+From source during development:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv sync
+```
+
 ## Current Behavior
 
 - Output files are named as `Artist - Title.mp3`
@@ -21,13 +35,7 @@ This project is a local CLI that:
 
 ## Setup
 
-1. Install dependencies:
-
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv sync
-```
-
-2. Create `.env`:
+1. Create `.env`:
 
 ```bash
 GOOGLE_CLIENT_ID=your_google_oauth_client_id
@@ -38,12 +46,12 @@ DROPBOX_ROOT=/Music
 YTDLP_COOKIES_FROM_BROWSER=
 ```
 
-3. Create one Google OAuth app and one Dropbox app:
+2. Create one Google OAuth app and one Dropbox app:
 
 - Google: create an OAuth client and copy its client ID and secret
 - Dropbox: create an app with file read/write scopes and copy its app key and secret
 
-4. Connect both services once:
+3. Connect both services once:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync auth-youtube
@@ -52,25 +60,25 @@ UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync auth-dropbox
 
 This stores refreshable auth in `.secrets/` so future runs can renew access automatically.
 
-5. Preview a run:
+4. Preview a run:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --dry-run --limit 25
 ```
 
-6. Run the real sync:
+5. Run the real sync:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200
 ```
 
-7. Optional: backfill older missing tracks in batches:
+6. Optional: backfill older missing tracks in batches:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync backfill --count 25 --limit 1000
 ```
 
-8. Optional: install automatic background syncing on macOS:
+7. Optional: install automatic background syncing on macOS:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync install-launch-agent --interval-minutes 30
@@ -100,6 +108,7 @@ That document explains how to:
 ## Notes
 
 - Dropbox uses a refresh-token flow, so you should not need to replace expiring access tokens by hand.
+- If secret files are missing, the CLI can also bootstrap them from environment variables such as `GOOGLE_REFRESH_TOKEN` and `DROPBOX_REFRESH_TOKEN`.
 - If a file already exists at the target Dropbox path, it is skipped by default.
 - If some videos need browser cookies to download, set `YTDLP_COOKIES_FROM_BROWSER` to `chrome`, `brave`, or `safari`.
 - Borderline items are excluded unless you pass `--include-borderline`.

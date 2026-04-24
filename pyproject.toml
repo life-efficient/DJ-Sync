@@ -1,6 +1,6 @@
 [project]
 name = "ytm-dropbox-dj-sync"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sync YouTube Music likes into a Dropbox-backed DJ library"
 readme = "README.md"
 authors = [

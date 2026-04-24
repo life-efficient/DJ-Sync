@@ -25,6 +25,8 @@ from ytmusicapi import setup_oauth
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
+DEFAULT_GOOGLE_SCOPE = "https://www.googleapis.com/auth/youtube"
+
 DROPBOX_APP_SCOPES = [
     "account_info.read",
     "files.metadata.read",
@@ -476,6 +478,7 @@ def build_youtube_client(config: Config):
         raise typer.BadParameter(
             "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env"
         )
+    ensure_youtube_auth_file(config)
     if not config.ytmusic_oauth_path.exists():
         raise typer.BadParameter(
             f"Missing {config.ytmusic_oauth_path}. Run `uv run ytm-dropbox-dj-sync auth-youtube` first."
@@ -503,6 +506,7 @@ def build_youtube_client(config: Config):
 
 
 def build_dropbox_client(config: Config) -> dropbox.Dropbox:
+    ensure_dropbox_auth_file(config)
     if config.dropbox_oauth_path.exists():
         auth_payload = json.loads(config.dropbox_oauth_path.read_text())
         return dropbox.Dropbox(
@@ -664,6 +668,42 @@ def gather_known_paths(config: Config, dbx: dropbox.Dropbox) -> set[str]:
 
 def path_key(value: str) -> str:
     return normalize_dropbox_path(value).rsplit("/", 1)[-1].lower()
+
+
+def ensure_youtube_auth_file(config: Config) -> None:
+    if config.ytmusic_oauth_path.exists():
+        return
+
+    refresh_token = env("GOOGLE_REFRESH_TOKEN")
+    if not refresh_token:
+        return
+
+    payload = {
+        "access_token": env("GOOGLE_ACCESS_TOKEN"),
+        "refresh_token": refresh_token,
+        "scope": env("GOOGLE_OAUTH_SCOPE", DEFAULT_GOOGLE_SCOPE),
+        "token_type": "Bearer",
+    }
+    config.secrets_dir.mkdir(parents=True, exist_ok=True)
+    config.ytmusic_oauth_path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def ensure_dropbox_auth_file(config: Config) -> None:
+    if config.dropbox_oauth_path.exists():
+        return
+
+    refresh_token = env("DROPBOX_REFRESH_TOKEN")
+    if not refresh_token or not config.dropbox_app_key:
+        return
+
+    payload = {
+        "app_key": config.dropbox_app_key,
+        "app_secret": config.dropbox_app_secret,
+        "refresh_token": refresh_token,
+        "access_token": env("DROPBOX_ACCESS_TOKEN"),
+    }
+    config.secrets_dir.mkdir(parents=True, exist_ok=True)
+    config.dropbox_oauth_path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
 def download_audio(track: Track, destination: Path, config: Config) -> Path:
