@@ -11,11 +11,13 @@ This project is a local CLI that:
 
 ## Install
 
-From a GitHub release artifact:
+From the current GitHub release artifact:
 
 ```bash
 pip install https://github.com/life-efficient/DJ-Sync/releases/download/v0.2.0/ytm_dropbox_dj_sync-0.2.0-py3-none-any.whl
 ```
+
+PyPI publishing is wired up through GitHub Actions via Trusted Publishing. The one-time setup details are in [PYPI.md](/Users/harryberg/projects/ytm-dropbox-dj-sync/PYPI.md).
 
 From source during development:
 

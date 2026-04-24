@@ -20,6 +20,11 @@ dependencies = [
     "ytmusicapi>=1.11.5",
 ]
 
+[project.urls]
+Homepage = "https://github.com/life-efficient/DJ-Sync"
+Repository = "https://github.com/life-efficient/DJ-Sync"
+Issues = "https://github.com/life-efficient/DJ-Sync/issues"
+
 [project.scripts]
 ytm-dropbox-dj-sync = "ytm_dropbox_dj_sync:main"
 
