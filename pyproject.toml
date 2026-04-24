@@ -1,0 +1,27 @@
+[project]
+name = "ytm-dropbox-dj-sync"
+version = "0.1.0"
+description = "Sync YouTube Music likes into a Dropbox-backed DJ library"
+readme = "README.md"
+authors = [
+    { name = "Harry", email = "harryaberg@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "browser-cookie3>=0.20.1",
+    "dropbox>=12.0.2",
+    "google-api-python-client>=2.194.0",
+    "google-auth-oauthlib>=1.3.1",
+    "mutagen>=1.47.0",
+    "python-dotenv>=1.2.2",
+    "requests>=2.33.1",
+    "typer>=0.24.2",
+    "ytmusicapi>=1.11.5",
+]
+
+[project.scripts]
+ytm-dropbox-dj-sync = "ytm_dropbox_dj_sync:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
