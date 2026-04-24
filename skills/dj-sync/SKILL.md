@@ -6,11 +6,11 @@ Use this skill when the task is to run or maintain the YouTube-to-Dropbox DJ syn
 
 This workflow syncs liked YouTube items into a flat MP3 library in Dropbox for DJ deck use.
 
-The sync CLI lives in the `ytm-dropbox-dj-sync` repository and should be treated as the source of truth. Do not reimplement the sync logic in the agent.
+The sync CLI lives in the `DJ-Sync` repository and should be treated as the source of truth. Do not reimplement the sync logic in the agent.
 
 ## What This Skill Should Do
 
-1. Go to the local `ytm-dropbox-dj-sync` checkout.
+1. Go to the local `DJ-Sync` checkout.
 2. Ensure dependencies are installed.
 3. Confirm required config and auth files exist.
 4. Run the CLI sync command.
@@ -105,7 +105,7 @@ The cron job should:
 Example command payload:
 
 ```bash
-cd /path/to/ytm-dropbox-dj-sync && UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200 >> .data/cron.log 2>&1
+cd /path/to/DJ-Sync && UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200 >> .data/cron.log 2>&1
 ```
 
 Use the actual repo path on the machine instead of the placeholder path above.

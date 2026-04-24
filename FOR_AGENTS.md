@@ -4,11 +4,11 @@ This file explains how to set up and automate the DJ sync tool from a shell insi
 
 ## Goal
 
-Set up the `ytm-dropbox-dj-sync` CLI, install the `dj-sync` skill into the agent's workspace skills directory, and configure a recurring daily cron job that runs the sync automatically.
+Set up the DJ Sync CLI, install the `dj-sync` skill into the agent's workspace skills directory, and configure a recurring daily cron job that runs the sync automatically.
 
 ## Repository
 
-The sync tool lives in the `ytm-dropbox-dj-sync` repository.
+The sync tool lives in the `DJ-Sync` repository.
 
 If the user provides a git URL, clone from that URL.
 
@@ -18,7 +18,7 @@ If neither a repo path nor a git URL is available, stop and ask for the canonica
 
 ## Setup Workflow
 
-1. Clone or locate the `ytm-dropbox-dj-sync` repository.
+1. Clone or locate the `DJ-Sync` repository.
 2. Go to the repo root.
 3. Install dependencies with:
 
@@ -74,7 +74,7 @@ The cron entry should:
 Example payload:
 
 ```bash
-cd /path/to/ytm-dropbox-dj-sync && UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200 >> .data/cron.log 2>&1
+cd /path/to/DJ-Sync && UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200 >> .data/cron.log 2>&1
 ```
 
 Choose a daily schedule unless the user asks for a different cadence.
