@@ -231,26 +231,71 @@ def sync(
     retry_failed: bool = typer.Option(False, help="Retry items that failed previously."),
     overwrite_dropbox: bool = typer.Option(False, help="Overwrite files that already exist in Dropbox."),
 ) -> None:
-    """Sync liked YouTube Music tracks into the local library and Dropbox."""
+    """Sync newer liked tracks until the first already-uploaded music file is reached."""
+    run_sync(
+        limit=limit,
+        dry_run=dry_run,
+        include_borderline=include_borderline,
+        retry_failed=retry_failed,
+        overwrite_dropbox=overwrite_dropbox,
+        backfill_count=None,
+    )
+
+
+@app.command()
+def backfill(
+    count: int = typer.Option(25, min=1, help="How many older missing tracks to import."),
+    limit: int = typer.Option(1000, min=1, help="How many liked items to inspect while searching for gaps."),
+    dry_run: bool = typer.Option(False, help="Show decisions without downloading or uploading."),
+    include_borderline: bool = typer.Option(
+        False,
+        help="Include items that look maybe-musical instead of clearly musical.",
+    ),
+    retry_failed: bool = typer.Option(False, help="Retry items that failed previously."),
+    overwrite_dropbox: bool = typer.Option(False, help="Overwrite files that already exist in Dropbox."),
+) -> None:
+    """Import older missing tracks without relying on prior sync state."""
+    run_sync(
+        limit=limit,
+        dry_run=dry_run,
+        include_borderline=include_borderline,
+        retry_failed=retry_failed,
+        overwrite_dropbox=overwrite_dropbox,
+        backfill_count=count,
+    )
+
+
+def run_sync(
+    *,
+    limit: int,
+    dry_run: bool,
+    include_borderline: bool,
+    retry_failed: bool,
+    overwrite_dropbox: bool,
+    backfill_count: int | None,
+) -> None:
+    """Shared sync engine for forward sync and historical backfill."""
     config = Config.load()
     config.ensure_dirs()
     youtube = build_youtube_client(config)
     dbx = build_dropbox_client(config)
     state = load_state(config.state_path)
+    known_paths = gather_known_paths(config, dbx)
 
     tracks = get_liked_tracks(youtube, limit)
 
     typer.echo(f"Loaded {len(tracks)} liked items from YouTube.")
+    typer.echo(
+        f"Indexed {len(known_paths)} existing files from the local library and Dropbox."
+    )
 
     uploaded_count = 0
     skipped_count = 0
     failed_count = 0
+    stop_on_existing = backfill_count is None
+    reached_existing_marker = False
 
     for track in tracks:
-        if track.video_id in state["processed"]:
-            typer.echo(f"Skipping already-synced item: {track.title}")
-            skipped_count += 1
-            continue
         if track.video_id in state["failed"] and not retry_failed:
             typer.echo(f"Skipping previously failed item: {track.title}")
             skipped_count += 1
@@ -269,7 +314,7 @@ def sync(
             state["processed"][track.video_id] = {
                 "video_id": track.video_id,
                 "title": track.title,
-                "artists": track.artists,
+                "artists": normalized_artist_names(track),
                 "album": track.album,
                 "classification": asdict(classification),
                 "status": "skipped",
@@ -277,15 +322,27 @@ def sync(
             save_state(config.state_path, state)
             continue
 
-        local_path = choose_local_path(config.local_library_dir, track)
-        dropbox_path = normalize_dropbox_path(
-            f"{config.dropbox_root}/{local_path.relative_to(config.local_library_dir).as_posix()}"
-        )
+        local_path = canonical_local_path(config.local_library_dir, track)
+        dropbox_path = canonical_dropbox_path(config.dropbox_root, track)
+        known_key = path_key(dropbox_path)
+        exists_already = known_key in known_paths
+
+        if exists_already and stop_on_existing:
+            typer.echo(f"Reached existing track marker: {local_path.name}")
+            reached_existing_marker = True
+            break
+
+        if exists_already:
+            typer.echo(f"Already present, keeping existing file: {local_path.name}")
+            skipped_count += 1
+            continue
 
         if dry_run:
             typer.echo(f"Would save to {local_path}")
             typer.echo(f"Would upload to {dropbox_path}")
-            skipped_count += 1
+            uploaded_count += 1
+            if backfill_count is not None and uploaded_count >= backfill_count:
+                break
             continue
 
         try:
@@ -296,7 +353,7 @@ def sync(
             record = SyncRecord(
                 video_id=track.video_id,
                 title=track.title,
-                artists=track.artists,
+                artists=normalized_artist_names(track),
                 album=track.album,
                 local_path=str(final_path),
                 dropbox_path=dropbox_path,
@@ -307,13 +364,16 @@ def sync(
             state["processed"][track.video_id] = asdict(record)
             state["failed"].pop(track.video_id, None)
             save_state(config.state_path, state)
+            known_paths.add(known_key)
             uploaded_count += 1
             typer.echo(f"Synced {final_path.name}")
+            if backfill_count is not None and uploaded_count >= backfill_count:
+                break
         except Exception as exc:  # noqa: BLE001
             state["failed"][track.video_id] = {
                 "video_id": track.video_id,
                 "title": track.title,
-                "artists": track.artists,
+                "artists": normalized_artist_names(track),
                 "error": str(exc),
             }
             save_state(config.state_path, state)
@@ -324,6 +384,10 @@ def sync(
     typer.echo(f"Uploaded: {uploaded_count}")
     typer.echo(f"Skipped: {skipped_count}")
     typer.echo(f"Failed: {failed_count}")
+    if stop_on_existing:
+        typer.echo(f"Reached existing marker: {'yes' if reached_existing_marker else 'no'}")
+    elif backfill_count is not None:
+        typer.echo(f"Backfill target: {backfill_count}")
 
 
 @app.command("install-launch-agent")
@@ -565,13 +629,41 @@ def classify_track(track: Track) -> Classification:
     return Classification(label="skip", score=score, reasons=reasons)
 
 
-def choose_local_path(local_library_dir: Path, track: Track) -> Path:
+def canonical_filename(track: Track) -> str:
     artist = sanitize_path_component(primary_artist_name(track))
     title = sanitize_path_component(track.title)
-    base = local_library_dir / f"{artist} - {title}.mp3"
-    if not base.exists():
-        return base
-    return local_library_dir / f"{artist} - {title} [{track.video_id}].mp3"
+    return f"{artist} - {title}.mp3"
+
+
+def canonical_local_path(local_library_dir: Path, track: Track) -> Path:
+    return local_library_dir / canonical_filename(track)
+
+
+def canonical_dropbox_path(dropbox_root: str, track: Track) -> str:
+    return normalize_dropbox_path(f"{dropbox_root}/{canonical_filename(track)}")
+
+
+def gather_known_paths(config: Config, dbx: dropbox.Dropbox) -> set[str]:
+    known: set[str] = set()
+
+    for file_path in config.local_library_dir.glob("*.mp3"):
+        known.add(path_key(file_path.name))
+
+    result = dbx.files_list_folder(config.dropbox_root, recursive=True)
+    while True:
+        for entry in result.entries:
+            entry_path = getattr(entry, "path_display", None)
+            if entry_path and entry_path.lower().endswith(".mp3"):
+                known.add(path_key(entry_path))
+        if not result.has_more:
+            break
+        result = dbx.files_list_folder_continue(result.cursor)
+
+    return known
+
+
+def path_key(value: str) -> str:
+    return normalize_dropbox_path(value).rsplit("/", 1)[-1].lower()
 
 
 def download_audio(track: Track, destination: Path, config: Config) -> Path:

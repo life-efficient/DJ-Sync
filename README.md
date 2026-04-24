@@ -15,7 +15,9 @@ This project is a local CLI that:
 - YouTube `Topic` suffixes are stripped from artist names
 - Files stay flat in both the local library and Dropbox
 - Dropbox uploads go to the configured `DROPBOX_ROOT`
-- Duplicate prevention currently works at the source-video and destination-path level
+- Regular `sync` behaves like a forward incremental sync and stops when it reaches the first existing uploaded music file
+- `backfill` imports older missing tracks in bounded batches without relying on historical sync state
+- Duplicate prevention currently works at the destination-path level and by stopping at the first known uploaded track during forward sync
 
 ## Setup
 
@@ -62,7 +64,13 @@ UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --dry-run --limit 25
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync sync --limit 200
 ```
 
-7. Optional: install automatic background syncing on macOS:
+7. Optional: backfill older missing tracks in batches:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync backfill --count 25 --limit 1000
+```
+
+8. Optional: install automatic background syncing on macOS:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync install-launch-agent --interval-minutes 30
