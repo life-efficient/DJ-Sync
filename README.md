@@ -79,7 +79,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv run ytm-dropbox-dj-sync install-launch-agent --int
 
 If an agent is setting this up inside another environment, direct it to:
 
-- [/Users/harryberg/Documents/Codex/2026-04-24/i-want-to-build-something-in-3/FOR_AGENTS.md](/Users/harryberg/Documents/Codex/2026-04-24/i-want-to-build-something-in-3/FOR_AGENTS.md)
+- [FOR_AGENTS.md](/Users/harryberg/projects/ytm-dropbox-dj-sync/FOR_AGENTS.md)
 
 That document explains how to:
 
